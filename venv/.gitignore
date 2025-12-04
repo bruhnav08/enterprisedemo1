@@ -1,0 +1,13 @@
+# Frontend
+node_modules/
+dist/
+.env
+.DS_Store
+
+# Backend (Python/Django)
+__pycache__/
+*.py[cod]
+*$py.class
+venv/
+env/
+db.sqlite3

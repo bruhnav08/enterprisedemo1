@@ -105,12 +105,14 @@ const TypeManagementPage = () => {
       width: 150,
       getActions: (params) => [
         <GridActionsCellItem
+          key="enter"
           icon={<ArrowForwardIcon />}
           label="Enter"
           onClick={() => navigate(`/manage/${params.id}`)}
           showInMenu={false}
         />,
         <GridActionsCellItem
+          key="delete"
           icon={<DeleteIcon color="error" />}
           label="Delete"
           onClick={(e) => handleDeleteType(params.id, e)}

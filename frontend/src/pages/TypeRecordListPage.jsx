@@ -24,10 +24,19 @@ const TypeRecordListPage = () => {
   const loadData = async () => {
     setLoading(true);
     try {
-      const [tRes, rRes] = await Promise.all([fetchTypeDetails(typeId), fetchRecords()]);
+      const [tRes, rRes] = await Promise.all([
+        fetchTypeDetails(typeId),
+        fetchRecords()
+      ]);
       setTypeDef(tRes.data);
-      setRecords(rRes.data.filter(r => r.record_type === parseInt(typeId)));
-    } catch (error) { console.error(error); } finally { setLoading(false); }
+      // FIX: Use Number.parseInt (SonarQube)
+      const filtered = rRes.data.filter(r => r.record_type === Number.parseInt(typeId));
+      setRecords(filtered);
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleDelete = async (id, event) => {
@@ -43,6 +52,7 @@ const TypeRecordListPage = () => {
   const { gridRows, gridColumns } = useMemo(() => {
     if (!typeDef) return { gridRows: [], gridColumns: [] };
 
+    // 1. Base Columns
     const baseCols = [
         { field: 'formatted_id', headerName: 'ID', width: 100 },
         { 
@@ -56,6 +66,7 @@ const TypeRecordListPage = () => {
         },
     ];
 
+    // 2. Dynamic Columns
     const schemaFields = typeDef.schema_definition?.fields || [];
     const dynamicCols = schemaFields.map(field => ({
         field: field.name,
@@ -64,16 +75,34 @@ const TypeRecordListPage = () => {
         minWidth: 150
     }));
 
+    // 3. Actions
     const actionCol = {
         field: 'actions', type: 'actions', headerName: 'Actions', width: 100,
         getActions: (params) => [
-            <GridActionsCellItem icon={<EditIcon />} label="Edit" onClick={() => navigate(`/edit/${params.id}`)} showInMenu={false} />,
-            <GridActionsCellItem icon={<DeleteIcon color="error" />} label="Delete" onClick={(e) => handleDelete(params.id, e)} showInMenu={false} />,
+            // FIX: Added unique keys (SonarQube)
+            <GridActionsCellItem 
+                key="edit"
+                icon={<EditIcon />} 
+                label="Edit" 
+                onClick={() => navigate(`/edit/${params.id}`)} 
+                showInMenu={false}
+            />,
+            <GridActionsCellItem 
+                key="delete"
+                icon={<DeleteIcon color="error" />} 
+                label="Delete" 
+                onClick={(e) => handleDelete(params.id, e)} 
+                showInMenu={false}
+            />,
         ]
     };
 
+    // 4. Flatten Rows
     const rows = records.map(r => ({
-        id: r.id, formatted_id: r.formatted_id, created_at: r.created_at, ...r.attributes 
+        id: r.id,
+        formatted_id: r.formatted_id,
+        created_at: r.created_at, 
+        ...r.attributes 
     }));
 
     return { gridRows: rows, gridColumns: [...baseCols, ...dynamicCols, actionCol] };
@@ -86,21 +115,54 @@ const TypeRecordListPage = () => {
 
   return (
     <Paper sx={{ p: 3, height: '85vh', display: 'flex', flexDirection: 'column' }}>
+      
+      {/* HEADER + SEARCH */}
       <Box sx={{ mb: 3 }}>
         <Breadcrumbs aria-label="breadcrumb" sx={{ mb: 2 }}>
-            <MuiLink underline="hover" color="inherit" onClick={() => navigate('/manage')} sx={{ cursor: 'pointer' }}>Type Management</MuiLink>
+            <MuiLink underline="hover" color="inherit" onClick={() => navigate('/manage')} sx={{ cursor: 'pointer' }}>
+                Type Management
+            </MuiLink>
             <Typography color="text.primary">{typeDef ? typeDef.name : 'Loading...'}</Typography>
         </Breadcrumbs>
+
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <Typography variant="h5" fontWeight="bold">{typeDef ? `Managing: ${typeDef.name}` : 'Loading...'}</Typography>
+            <Box>
+                <Typography variant="h5" fontWeight="bold">
+                    {typeDef ? `Managing: ${typeDef.name}` : 'Loading...'}
+                </Typography>
+                <Typography variant="caption" color="text.secondary">
+                    {filteredGridRows.length} records found
+                </Typography>
+            </Box>
+
             <Box sx={{ display: 'flex', gap: 2 }}>
-                <TextField size="small" placeholder="Search Records..." value={searchText} onChange={(e) => setSearchText(e.target.value)} InputProps={{ startAdornment: <InputAdornment position="start"><SearchIcon /></InputAdornment> }} sx={{ width: 250 }} />
-                <Button startIcon={<ArrowBackIcon />} onClick={() => navigate('/manage')} variant="outlined">Back</Button>
+                {/* EXTERNAL SEARCH BAR */}
+                <TextField 
+                    size="small"
+                    placeholder="Search Records..."
+                    value={searchText}
+                    onChange={(e) => setSearchText(e.target.value)}
+                    InputProps={{
+                        startAdornment: <InputAdornment position="start"><SearchIcon color="action" /></InputAdornment>
+                    }}
+                    sx={{ width: 250 }}
+                />
+                
+                <Button startIcon={<ArrowBackIcon />} onClick={() => navigate('/manage')} variant="outlined">
+                    Back
+                </Button>
             </Box>
         </Box>
       </Box>
+
+      {/* DATA GRID */}
       <Box sx={{ flexGrow: 1, width: '100%' }}>
-        <DataGrid rows={filteredGridRows} columns={gridColumns} loading={loading} disableRowSelectionOnClick />
+        <DataGrid 
+            rows={filteredGridRows} 
+            columns={gridColumns} 
+            loading={loading} 
+            disableRowSelectionOnClick
+        />
       </Box>
     </Paper>
   );

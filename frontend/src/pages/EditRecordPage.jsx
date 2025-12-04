@@ -21,12 +21,10 @@ const EditRecordPage = () => {
 
   const fetchRecordData = async () => {
     try {
-      // 1. Get the Record
       const recordRes = await axios.get(`http://127.0.0.1:8000/api/records/${id}/`);
       const record = recordRes.data;
       setFormData(record.attributes);
       
-      // 2. Get the Type Definition
       const typeRes = await axios.get(`http://127.0.0.1:8000/api/types/${record.record_type}/`);
       setRecordType(typeRes.data);
       setSchema(convertRules(typeRes.data.schema_definition));
@@ -38,24 +36,32 @@ const EditRecordPage = () => {
     }
   };
 
-  // Improved RJSF Converter (Matching AssetEntryPage logic)
   const convertRules = (backendRules) => {
     if (!backendRules?.fields) return null;
     const properties = {};
     const required = [];
     
     backendRules.fields.forEach(f => {
-      let fieldType = 'string';
-      let fieldFormat = undefined;
+      // FIX: Removed redundant default assignment 'string'
+      let fieldType; 
+      let fieldFormat;
 
-      if (f.type === 'integer') fieldType = 'integer';
-      else if (f.type === 'boolean') fieldType = 'boolean';
-      else if (f.type === 'date') { fieldType = 'string'; fieldFormat = 'date'; }
+      if (f.type === 'integer') {
+          fieldType = 'integer';
+      } else if (f.type === 'boolean') {
+          fieldType = 'boolean';
+      } else if (f.type === 'date') { 
+          fieldType = 'string'; 
+          fieldFormat = 'date'; 
+      } else {
+          fieldType = 'string';
+      }
 
       properties[f.name] = { 
         type: fieldType, 
         format: fieldFormat,
-        title: f.name.replace(/_/g, ' ').toUpperCase() 
+        // FIX: replaceAll
+        title: f.name.replaceAll(/_/g, ' ').toUpperCase() 
       };
       
       if (f.mandatory) required.push(f.name);
@@ -96,7 +102,6 @@ const EditRecordPage = () => {
             formData={formData} 
             onChange={e => setFormData(e.formData)}
             onSubmit={handleUpdate}
-            // R30: Allowing additional properties updates the schema automatically
             additionalProperties={true} 
           />
       )}

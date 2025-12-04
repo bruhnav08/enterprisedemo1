@@ -3,8 +3,9 @@ import { Link, useLocation } from 'react-router-dom';
 import DashboardIcon from '@mui/icons-material/Dashboard';
 import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline';
 import StorageIcon from '@mui/icons-material/Storage';
-import Brightness4Icon from '@mui/icons-material/Brightness4'; // Moon Icon
-import Brightness7Icon from '@mui/icons-material/Brightness7'; // Sun Icon
+import Brightness4Icon from '@mui/icons-material/Brightness4';
+import Brightness7Icon from '@mui/icons-material/Brightness7';
+import PropTypes from 'prop-types'; // FIX: Import PropTypes
 
 const MainLayout = ({ children, toggleColorMode, mode }) => {
   const location = useLocation();
@@ -14,7 +15,7 @@ const MainLayout = ({ children, toggleColorMode, mode }) => {
     return location.pathname === path 
       ? { 
           backgroundColor: theme.palette.primary.main,
-          color: '#ffffff'
+          color: theme.palette.primary.contrastText
         } 
       : { 
           color: theme.palette.text.secondary,
@@ -24,22 +25,17 @@ const MainLayout = ({ children, toggleColorMode, mode }) => {
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
-      
-      {/* Modern Glass Navbar */}
       <AppBar 
         position="sticky" 
         elevation={0}
         sx={{ 
-            // 80% Opacity Background
             bgcolor: theme.palette.mode === 'light' ? 'rgba(255, 255, 255, 0.8)' : 'rgba(15, 23, 42, 0.8)',
-            // Blur Effect
             backdropFilter: 'blur(12px)',
             borderBottom: 1,
             borderColor: 'divider',
         }}
       >
         <Toolbar>
-          {/* Gradient Text Logo */}
           <Typography 
             variant="h6" 
             component="div" 
@@ -86,19 +82,16 @@ const MainLayout = ({ children, toggleColorMode, mode }) => {
             </Button>
           </Box>
 
-          {/* Dark Mode Toggle */}
           <IconButton onClick={toggleColorMode} color="default">
             {mode === 'dark' ? <Brightness7Icon /> : <Brightness4Icon />}
           </IconButton>
         </Toolbar>
       </AppBar>
 
-      {/* Page Content */}
       <Container maxWidth="xl" sx={{ mt: 4, mb: 4, flexGrow: 1 }}>
         {children}
       </Container>
 
-      {/* Footer */}
       <Box component="footer" sx={{ py: 3, px: 2, mt: 'auto', borderTop: 1, borderColor: 'divider', bgcolor: 'background.default' }}>
         <Container maxWidth="sm">
           <Typography variant="body2" color="text.secondary" align="center">
@@ -108,6 +101,13 @@ const MainLayout = ({ children, toggleColorMode, mode }) => {
       </Box>
     </Box>
   );
+};
+
+// FIX: Added PropTypes Validation
+MainLayout.propTypes = {
+  children: PropTypes.node.isRequired,
+  toggleColorMode: PropTypes.func.isRequired,
+  mode: PropTypes.string.isRequired,
 };
 
 export default MainLayout;

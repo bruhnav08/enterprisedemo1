@@ -31,12 +31,13 @@ const TypeManagementPage = () => {
 
   const handleDeleteType = async (id, event) => {
     event.stopPropagation();
-    if (window.confirm("WARNING: Deleting a Type will delete ALL records associated with it. Are you sure?")) {
+    // FIX: globalThis
+    if (globalThis.confirm("WARNING: Deleting a Type will delete ALL records associated with it. Are you sure?")) {
         try {
             await deleteType(id);
             setTypes(prev => prev.filter(t => t.id !== id));
         } catch (error) {
-            alert("Failed to delete type.");
+            alert("Failed to delete type. It may have dependency constraints.");
         }
     }
   };
@@ -51,6 +52,7 @@ const TypeManagementPage = () => {
           const typeToUpdate = types.find(t => t.id === id);
           await updateType(id, { ...typeToUpdate, is_active: !currentStatus });
       } catch (error) {
+          console.error(error); // FIX: Log error
           loadData();
       }
   };
@@ -92,7 +94,6 @@ const TypeManagementPage = () => {
       field: 'created_at', 
       headerName: 'Created On', 
       width: 250,
-      // FIX: Crash-proof date formatter
       valueFormatter: (value) => {
           if (!value) return '';
           return new Date(value).toLocaleString();
@@ -105,14 +106,12 @@ const TypeManagementPage = () => {
       width: 150,
       getActions: (params) => [
         <GridActionsCellItem
-          key="enter"
           icon={<ArrowForwardIcon />}
           label="Enter"
           onClick={() => navigate(`/manage/${params.id}`)}
           showInMenu={false}
         />,
         <GridActionsCellItem
-          key="delete"
           icon={<DeleteIcon color="error" />}
           label="Delete"
           onClick={(e) => handleDeleteType(params.id, e)}
@@ -140,7 +139,15 @@ const TypeManagementPage = () => {
   return (
     <Paper sx={{ p: 3, height: '85vh', display: 'flex', flexDirection: 'column' }}>
       <Box sx={{ mb: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <Typography variant="h5" sx={{ fontWeight: 'bold' }}>Type Management</Typography>
+        <Box>
+            <Typography variant="h5" sx={{ fontWeight: 'bold', color: '#1a237e' }}>
+                Type Management
+            </Typography>
+            <Typography variant="body2" color="textSecondary">
+                Toggle <strong>Status</strong> to hide types from new entries.
+            </Typography>
+        </Box>
+        
         <TextField 
             size="small"
             placeholder="Search Types..."

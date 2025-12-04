@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import PropTypes from 'prop-types'; // FIX: Added PropTypes
+import PropTypes from 'prop-types'; // FIX: Import PropTypes
 import { 
   Paper, Typography, Box, TextField, Button, Autocomplete, 
   IconButton, Grid, Switch, FormControlLabel, Chip, Divider,
@@ -12,74 +12,14 @@ import SaveIcon from '@mui/icons-material/Save';
 import LockIcon from '@mui/icons-material/Lock'; 
 import { fetchTypes, fetchTypeDetails, createRecord, createType } from '../services/api';
 
-// --- HELPER COMPONENTS ---
-
-const validateAttribute = (attr) => {
-    if (!attr.name) return "All attributes must have a name.";
-    
-    if (attr.mandatory && attr.type !== 'boolean') {
-        if (attr.value === '' || attr.value === null || attr.value === undefined) {
-            return `Field '${attr.name}' is mandatory.`;
-        }
-    }
-    
-    if (attr.value === '' || attr.value === null || attr.value === undefined) return null;
-
-    if ((attr.type === 'string' || attr.type === 'email')) {
-        if (attr.min && attr.value.length < attr.min) return `${attr.name} too short.`;
-        if (attr.max && attr.value.length > attr.max) return `${attr.name} too long.`;
-    }
-    if (attr.type === 'email') {
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        if (!emailRegex.test(attr.value)) return `${attr.name} invalid email.`;
-    }
-    if (attr.type === 'integer') {
-        const val = Number(attr.value);
-        if (attr.min !== undefined && val < attr.min) return `${attr.name} too low.`;
-        if (attr.max !== undefined && val > attr.max) return `${attr.name} too high.`;
-    }
-    if (attr.type === 'date') {
-        if (attr.minDate && attr.value < attr.minDate) return `${attr.name} too early.`;
-        if (attr.maxDate && attr.value > attr.maxDate) return `${attr.name} too late.`;
-    }
-    return null;
-};
-
-const parseConstraints = (settings) => {
-    const newSettings = { ...settings };
-    if (newSettings.type === 'integer') {
-        if (newSettings.min) newSettings.min = Number.parseFloat(newSettings.min);
-        if (newSettings.max) newSettings.max = Number.parseFloat(newSettings.max);
-    } else if (newSettings.type === 'string' || newSettings.type === 'email') {
-        if (newSettings.min) newSettings.min = Number.parseInt(newSettings.min);
-        if (newSettings.max) newSettings.max = Number.parseInt(newSettings.max);
-    }
-    if (newSettings.type === 'boolean') {
-        newSettings.value = false;
-    } else if (newSettings.type !== 'boolean' && typeof newSettings.value === 'boolean') {
-        newSettings.value = '';
-    }
-    return newSettings;
-};
-
+// --- HELPER COMPONENT: Attribute Row ---
 const AttributeRow = ({ attr, index, onValueChange, onOpenSettings, onRemove }) => {
-    // FIX: Simplified ternary logic
-    let rowBgColor = '#fff';
-    let rowBorderColor = '#e0e0e0';
-
-    if (attr.isPrimary) {
-        rowBgColor = '#fff0f0';
-        rowBorderColor = '#ffcdd2';
-    } else if (attr.isNew) {
-        rowBgColor = '#fffbf2';
-    }
-
     return (
         <Grid item xs={12}>
             <Paper variant="outlined" sx={{ 
                     p: 2, display: 'flex', alignItems: 'center', gap: 2, 
-                    bgcolor: rowBgColor,
-                    border: `1px solid ${rowBorderColor}`
+                    bgcolor: attr.isPrimary ? '#fff0f0' : (attr.isNew ? '#fffbf2' : '#fff'),
+                    border: attr.isPrimary ? '1px solid #ffcdd2' : '1px solid #e0e0e0'
                 }}>
                 
                 <IconButton 
@@ -101,6 +41,7 @@ const AttributeRow = ({ attr, index, onValueChange, onOpenSettings, onRemove }) 
                 </Box>
 
                 <Box sx={{ flexGrow: 1 }}>
+                    {/* Render Input based on Type */}
                     {(attr.type === 'string' || attr.type === 'email') && (
                         <TextField 
                             fullWidth size="small" placeholder={attr.type === 'email' ? "email@example.com" : "Enter text..."} 
@@ -136,6 +77,7 @@ const AttributeRow = ({ attr, index, onValueChange, onOpenSettings, onRemove }) 
                     )}
                 </Box>
 
+                {/* Delete Button (Hidden for Primary) */}
                 {!attr.isPrimary && attr.isNew && (
                     <IconButton color="error" onClick={() => onRemove(index)}>
                         <DeleteIcon />
@@ -146,7 +88,7 @@ const AttributeRow = ({ attr, index, onValueChange, onOpenSettings, onRemove }) 
     );
 };
 
-// FIX: PropTypes Definition
+// FIX: Define Prop Types for Validation
 AttributeRow.propTypes = {
     attr: PropTypes.shape({
         name: PropTypes.string,
@@ -166,6 +108,7 @@ AttributeRow.propTypes = {
     onRemove: PropTypes.func.isRequired
 };
 
+// --- MAIN COMPONENT ---
 const AssetEntryPage = () => {
   const [existingTypes, setExistingTypes] = useState([]);
   const [selectedType, setSelectedType] = useState(null); 
@@ -275,19 +218,30 @@ const AssetEntryPage = () => {
   };
 
   const saveSettings = () => {
+    const list = [...attributes];
     if(!tempSettings.name) return alert("Attribute Name is required");
-    const safeName = tempSettings.name.replaceAll(/\s/g, '_'); // FIX: replaceAll
+    const safeName = tempSettings.name.replace(/\s/g, '_');
 
-    if(attributes.some((a, i) => i !== settingsTargetIndex && a.name === safeName)) {
-        return alert("Attribute name must be unique");
-    }
+    const isDuplicate = list.some((a, i) => i !== settingsTargetIndex && a.name === safeName);
+    if(isDuplicate) return alert("Attribute name must be unique");
 
     if (tempSettings.isPrimary) tempSettings.mandatory = true;
 
-    const cleanedSettings = parseConstraints(tempSettings);
+    if (tempSettings.type === 'integer') {
+        if (tempSettings.min) tempSettings.min = parseFloat(tempSettings.min);
+        if (tempSettings.max) tempSettings.max = parseFloat(tempSettings.max);
+    } else if (tempSettings.type === 'string' || tempSettings.type === 'email') {
+        if (tempSettings.min) tempSettings.min = parseInt(tempSettings.min);
+        if (tempSettings.max) tempSettings.max = parseInt(tempSettings.max);
+    }
 
-    const list = [...attributes];
-    list[settingsTargetIndex] = { ...cleanedSettings, name: safeName };
+    if (tempSettings.type === 'boolean') {
+        tempSettings.value = false;
+    } else if (tempSettings.type !== 'boolean' && typeof tempSettings.value === 'boolean') {
+        tempSettings.value = '';
+    }
+
+    list[settingsTargetIndex] = { ...tempSettings, name: safeName };
     setAttributes(list);
     setSettingsOpen(false);
   };
@@ -297,8 +251,33 @@ const AssetEntryPage = () => {
     if (attributes.length === 0) return alert("At least one attribute is required.");
     
     for (const attr of attributes) {
-        const error = validateAttribute(attr);
-        if (error) return alert(error);
+        if (!attr.name) return alert("All attributes must have a name.");
+        
+        if (attr.mandatory && attr.type !== 'boolean') {
+            if (attr.value === '' || attr.value === null || attr.value === undefined) {
+                return alert(`Field '${attr.name}' is mandatory.`);
+            }
+        }
+        
+        if (attr.value === '' || attr.value === null) continue;
+
+        if ((attr.type === 'string' || attr.type === 'email')) {
+            if (attr.min && attr.value.length < attr.min) return alert(`${attr.name} too short.`);
+            if (attr.max && attr.value.length > attr.max) return alert(`${attr.name} too long.`);
+        }
+        if (attr.type === 'email') {
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            if (!emailRegex.test(attr.value)) return alert(`${attr.name} invalid email.`);
+        }
+        if (attr.type === 'integer') {
+            const val = Number(attr.value);
+            if (attr.min !== undefined && val < attr.min) return alert(`${attr.name} too low.`);
+            if (attr.max !== undefined && val > attr.max) return alert(`${attr.name} too high.`);
+        }
+        if (attr.type === 'date') {
+            if (attr.minDate && attr.value < attr.minDate) return alert(`${attr.name} too early.`);
+            if (attr.maxDate && attr.value > attr.maxDate) return alert(`${attr.name} too late.`);
+        }
     }
 
     if (attributes[0] && (!attributes[0].mandatory || !attributes[0].isPrimary)) {
@@ -313,10 +292,7 @@ const AssetEntryPage = () => {
         if (!selectedType) {
             const schemaFields = attributes.map(a => ({
                 name: a.name, type: a.type, mandatory: a.mandatory,
-                validators: { 
-                    min: a.min, max: a.max, 
-                    minDate: a.minDate, maxDate: a.maxDate 
-                }
+                validators: { min: a.min, max: a.max, minDate: a.minDate, maxDate: a.maxDate }
             }));
             if (!schemaFields[0].mandatory) schemaFields[0].mandatory = true;
             const typeRes = await createType({ 
@@ -405,19 +381,13 @@ const AssetEntryPage = () => {
                 ))}
             </Grid>
 
-            <Button startIcon={<AddCircleOutlineIcon />} fullWidth sx={{ mt: 2 }} onClick={handleAddAttribute}>
-                Add Another Field
-            </Button>
-
+            <Button startIcon={<AddCircleOutlineIcon />} fullWidth sx={{ mt: 2 }} onClick={handleAddAttribute}>Add Another Field</Button>
             <Divider sx={{ my: 4 }} />
-
-            <Button variant="contained" size="large" fullWidth startIcon={<SaveIcon />} onClick={handleSubmit} sx={{ py: 2 }}>
-                SAVE RECORD
-            </Button>
+            <Button variant="contained" size="large" fullWidth startIcon={<SaveIcon />} onClick={handleSubmit}>SAVE RECORD</Button>
         </Box>
       )}
 
-      {/* Dialog kept simplified for brevity */}
+      {/* Dialog */}
       <Dialog open={settingsOpen} onClose={() => setSettingsOpen(false)} maxWidth="xs" fullWidth>
         <DialogTitle>Field Settings</DialogTitle>
         <DialogContent>
@@ -437,14 +407,20 @@ const AssetEntryPage = () => {
                 
                 {(tempSettings.type === 'string' || tempSettings.type === 'email') && (
                     <Box sx={{ display: 'flex', gap: 2 }}>
-                        <TextField label="Min" type="number" size="small" value={tempSettings.min || ''} onChange={e => setTempSettings({...tempSettings, min: e.target.value})} />
-                        <TextField label="Max" type="number" size="small" value={tempSettings.max || ''} onChange={e => setTempSettings({...tempSettings, max: e.target.value})} />
+                        <TextField label="Min" type="number" size="small" value={tempSettings.min || ''} onChange={e => setTempSettings({...tempSettings, min: parseInt(e.target.value)})} />
+                        <TextField label="Max" type="number" size="small" value={tempSettings.max || ''} onChange={e => setTempSettings({...tempSettings, max: parseInt(e.target.value)})} />
                     </Box>
                 )}
                 {tempSettings.type === 'integer' && (
                     <Box sx={{ display: 'flex', gap: 2 }}>
-                        <TextField label="Min Value" type="number" size="small" value={tempSettings.min || ''} onChange={e => setTempSettings({...tempSettings, min: e.target.value})} />
-                        <TextField label="Max Value" type="number" size="small" value={tempSettings.max || ''} onChange={e => setTempSettings({...tempSettings, max: e.target.value})} />
+                        <TextField label="Min Value" type="number" size="small" value={tempSettings.min || ''} onChange={e => setTempSettings({...tempSettings, min: parseInt(e.target.value)})} />
+                        <TextField label="Max Value" type="number" size="small" value={tempSettings.max || ''} onChange={e => setTempSettings({...tempSettings, max: parseInt(e.target.value)})} />
+                    </Box>
+                )}
+                {tempSettings.type === 'date' && (
+                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                        <TextField label="Earliest" type="date" size="small" value={tempSettings.minDate || ''} onChange={e => setTempSettings({...tempSettings, minDate: e.target.value})} InputLabelProps={{ shrink: true }} />
+                        <TextField label="Latest" type="date" size="small" value={tempSettings.maxDate || ''} onChange={e => setTempSettings({...tempSettings, maxDate: e.target.value})} InputLabelProps={{ shrink: true }} />
                     </Box>
                 )}
             </Box>
